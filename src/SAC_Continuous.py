@@ -114,13 +114,9 @@ class SACContinuous:
             param_target.data.copy_(param_target.data * (1.0 - self.tau) +
                                     param.data * self.tau)
 
-    def update(self, transition_dict):
-        states = torch.tensor(transition_dict['states'], dtype=torch.float).to(self.device)
-        actions = torch.tensor(transition_dict['actions'], dtype=torch.float).to(self.device) # .view(-1, 8)
-        rewards = torch.tensor(transition_dict['rewards'], dtype=torch.float).view(-1, 1).to(self.device)
-        next_states = torch.tensor(transition_dict['next_states'], dtype=torch.float).to(self.device)
-        dones = torch.tensor(transition_dict['dones'], dtype=torch.float).view(-1, 1).to(self.device)
-        
+    def update(self, states, actions, rewards, next_states, dones):
+        """
+        """
         # 更新两个Q网络
         td_target = self.calc_target(rewards, next_states, dones)
 

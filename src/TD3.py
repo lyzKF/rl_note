@@ -132,11 +132,11 @@ class TD3():
 
 	def save(self,EnvName, timestep):
 		torch.save(self.actor.state_dict(), "./model/{}_actor{}.pth".format(EnvName,timestep))
-		torch.save(self.q_critic.state_dict(), "./model/{}_q_critic{}.pth".format(EnvName,timestep))
+		# torch.save(self.q_critic.state_dict(), "./model/{}_q_critic{}.pth".format(EnvName,timestep))
 
 	def load(self,EnvName, timestep):
-		self.actor.load_state_dict(torch.load("./model/{}_actor{}.pth".format(EnvName, timestep), map_location=self.dvc))
-		self.q_critic.load_state_dict(torch.load("./model/{}_q_critic{}.pth".format(EnvName, timestep), map_location=self.dvc))
+		self.actor.load_state_dict(torch.load("/Users/guoliang21/workspace/lyz/deepRL_note/model/ant_td3/{}_actor{}.pth".format(EnvName, timestep), map_location=self.dvc))
+		# self.q_critic.load_state_dict(torch.load("./model/{}_q_critic{}.pth".format(EnvName, timestep), map_location=self.dvc))
 
 
 class ReplayBuffer():

@@ -58,6 +58,9 @@ class DQN:
         """
             epsilon-贪婪策略采取动作
         """
+        # 根据衰减计划计算当前\epsilon
+        # epsilon = max(epsilon_end, epsilon_start - (epsilon_start - epsilon_end) * (current_step / epsilon_decay_steps))
+        
         if np.random.random() < self.epsilon:
             action = np.random.randint(self.action_dim)
         else:
@@ -68,11 +71,13 @@ class DQN:
     def update(self, states, actions, rewards, next_states, dones):
         """
         """
-        q_values = self.q_net(states).gather(1, actions)  # Q值
-        max_next_q_values = self.target_q_net(next_states).max(1)[0].view(-1, 1) # 下个状态的最大Q值
+        with torch.no_grad():
+            max_next_q_values = self.target_q_net(next_states).max(1)[0].view(-1, 1) # 下个状态的最大Q值
+            q_targets = rewards + self.gamma * max_next_q_values * (1 - dones)  # TD误差目标
 
-        q_targets = rewards + self.gamma * max_next_q_values * (1 - dones)  # TD误差目标
+        q_values = self.q_net(states).gather(1, actions)  # Q值
         dqn_loss = torch.mean(F.mse_loss(q_values, q_targets))  # 均方误差损失函数
+
         self.optimizer.zero_grad()  # PyTorch中默认梯度会累积,这里需要显式将梯度置为0
         dqn_loss.backward()  # 反向传播更新参数
         self.optimizer.step()

@@ -105,6 +105,7 @@ class Critic(nn.Module):
 		v = torch.tanh(self.C2(v))
 		v = self.C3(v)
 		return v
+	
 
 def str2bool(v):
 	'''transfer str to bool for argparse'''
