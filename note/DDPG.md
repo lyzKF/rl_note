@@ -8,3 +8,31 @@ DDPG，全称是deep deterministic policy gradient，深度确定性策略梯度
 
 ![](/assets/img/ddpg.png "Deep Deterministic Policy Gradient")
 
+#### critic网络训练
+critic网络的训练和DQN中的Q网络训练相似，旨在最小化均方贝尔曼误差(MSBE)。从经验回放缓冲区$D$采样一个batch_size的数据，$(s_{i}, a_{i}, r_{i}, s_{i}^{'})$是其中的一个样本数据，我们计算目标值$y_{i}$，这里的$i$代表第几个样本：$$y_{i} = r_{i} + \gamma * Q^{'}(s_{i}^{'}, \mu^{'}(s_{i}^{'};\theta^{\mu^{'}}); \theta^{Q^{'}})$$
+
+目标值计算使用**目标Actor网络**$\mu^{'}$来选择下一个动作$a^{'}=\mu^{'}(s_{i}^{'};\theta^{\mu^{'}})$，使用目标Critic网络$Q^{'}$来评估下一个动作值函数。目标网络和训练的网络解耦，显著提升了稳定性。
+
+critic的损失函数是目标值$y_{i}$与Critic当前估计$Q_{i}(s_{i}, a_{i};\theta^{Q})$之间的方差：$$L(\theta^{Q}) = \frac{1}{N} \sum_{i}\bigg(y_{i} - Q(s_{i}, a_{i}; \theta^{Q})\bigg)$$
+此损失通过对critic参数$\theta^{Q}$的梯度下降进行最小化。
+
+#### actor网络训练
+actor网络$\mu(s;\theta^{\mu})$使用确定性策略梯度进行更新，目标是调整Actor的参数$\theta^{\mu}$，根据当前的critic产生最大化预期Q值的动作。Actor目标函数的梯度使用经验回放缓冲区中的小批量数据进行近似：$$\nabla_{\theta^{\mu}} J(\theta^{\mu}) \approx \frac{1}{N} \sum_{i}\nabla_{a}Q\bigg(s_{i}, a_{i};\theta^{Q}\bigg)|_{s=s_{i}, a=\mu(s;\theta^{\mu})} * \nabla_{\theta^{\mu}}\mu(s_{i};\theta^{\mu})$$
+
+这看起来很复杂，但直观地讲它意味着：
+1. 对于batch中的每个状态$s_{i}$，找到当前Actor策略将输出的动作$a = \mu(s_{i};\theta^{\mu})$；
+2. 询问critic，如果我们稍微改变动作$a$，Q值$Q(s_{i}, a_{i};\theta^{Q})$如何变化？
+3. 计算actor参数$\theta^{mu}$的变化如何影响输出动作$a$?
+4. 使用链式法则结合这些梯度，以确定改变$\theta^{\mu}$将如何影响Q值。
+5. 使用梯度上升更新$\theta^{\mu}$
+
+此更新使用Critic作为评估器，引导Actor做出更好的动作，而无需直接采样动作和估计期望，使其适用于连续空间。
+
+#### 经验回放与目标网络
+DDPG是一种off-policy算法。像DQN一样，它使用了经验回放和目标网络两种机制，以提升稳定性和样本效率：
+1. 经验回放，样本$(s_{t}, a_{t}, r_{t+1}, s_{t+1})$存储在一个大型经验回放缓冲区$D$中。在训练期间，会从$D$中随机采样小批量数据。这打破了连续经验之间的时间相关性，使网络能从多样化的过去经验中学习，从而带来更稳定和高效的学习。
+2. 目标网络，DDPG维护着独立的、缓慢更新副本的目标网络$\mu^{'}(s;\theta^{\mu^{'}})$和$Q^{'}(s,a;\theta^{Q^{'}})$；在每次主网络更新后，会使用一种称为Polyak平均的“软”更新规则：$$\theta^{'} \leftarrow \tau*\theta + (1-\tau)*\theta^{'}$$
+
+#### 确定性策略中的探索
+由于策略$\mu(s;\theta^{\mu})$是确定性的，如果在训练期间不加干预，它将始终为给定状态输出相同的动作。这会阻碍探索，为确保智能体充分探索环境，DDPG在actor的输出动作中添加噪声，仅限于训练期间：$$a_{t} = \mu(s, \theta^{\mu}) + \mathcal{N}_{t}$$
+噪声$\mathcal{N}_{t}$可以是简单的高斯噪声，噪声通常会在训练过程中衰减，在评估或部署期间，此噪声会被关闭。
